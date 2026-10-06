@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07182f">
+<title>OnTime Live Check-in</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f7fb;color:#07182f}
+.wrap{min-height:100vh;padding:18px;display:flex;justify-content:center}.app{width:100%;max-width:460px}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin:4px 0 16px}.logo{width:43px;height:43px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#2774ed,#16b8aa);color:white;font-weight:900}.brand b{display:block;font-size:18px}.brand small{font-size:7px;letter-spacing:1.5px;color:#8b98a9;font-weight:900}
+.card{background:white;border:1px solid #e2e8ef;border-radius:22px;overflow:hidden;box-shadow:0 22px 55px rgba(7,24,47,.12)}
+.head{background:#07182f;color:white;text-align:center;padding:20px}.head small{color:#6daaff;font-size:8px;font-weight:900;letter-spacing:2px}.head h1{font-size:23px;margin:6px 0 0}
+.body{padding:22px}.hidden{display:none!important}
+label{display:block;font-size:9px;font-weight:900;letter-spacing:1px;color:#8794a5;margin:0 0 8px}
+input{width:100%;height:52px;border:1px solid #dce4ed;border-radius:11px;padding:0 14px;font-size:18px;outline:none;text-align:center;letter-spacing:4px}
+.primary{width:100%;height:54px;border:0;border-radius:11px;background:#07182f;color:white;font-weight:900;margin-top:13px;cursor:pointer}
+.note{font-size:10px;line-height:1.55;color:#8d99a8;text-align:center;margin:12px 4px 0}
+.topbar{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:12px}.pill{padding:8px 10px;border-radius:9px;background:#eaf8f3;color:#168665;font-size:9px;font-weight:900}.count{font-size:10px;color:#8794a5}.count b{color:#07182f;font-size:16px}
+.camera{position:relative;overflow:hidden;border-radius:16px;background:#07182f;min-height:390px}
+#reader{width:100%;min-height:390px}#reader video{width:100%!important;min-height:390px;object-fit:cover;border-radius:16px}
+.overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:25px;color:white;background:rgba(7,24,47,.93)}
+.overlay.success{background:rgba(13,130,94,.94)}.overlay.warning{background:rgba(164,111,9,.94)}.overlay.error{background:rgba(169,57,57,.94)}
+.icon{width:68px;height:68px;border:2px solid rgba(255,255,255,.7);border-radius:50%;display:grid;place-items:center;font-size:31px;font-weight:900;margin-bottom:14px}.overlay h2{margin:0;font-size:24px}.overlay strong{margin-top:9px;font-size:16px}.overlay small{margin-top:8px;color:rgba(255,255,255,.85)}
+.status{text-align:center;padding:12px;font-size:10px;font-weight:800;color:#168665}.actions{display:flex;gap:8px}.secondary{flex:1;height:43px;border:1px solid #dce4ed;border-radius:9px;background:white;color:#07182f;font-weight:800}.danger{color:#b74b4b}
+#error{color:#b74b4b;text-align:center;font-size:10px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="app">
+<div class="brand"><div class="logo">O</div><div><b>OnTime</b><small>EVENTS & CONFERENCES</small></div></div>
+<div class="card">
+<div class="head"><small>ONTIME TEAM</small><h1>Live Staff Check-in</h1></div>
+<div class="body">
+
+<section id="login">
+<label>STAFF PIN</label>
+<input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••">
+<button class="primary" onclick="begin()">Start Live Scanner</button>
+<div id="error"></div>
+<p class="note">Staff access only. The camera stays open for continuous attendee check-in.</p>
+</section>
+
+<section id="scanner" class="hidden">
+<div class="topbar"><div class="pill">● CAMERA LIVE</div><div class="count">SESSION <b id="count">0</b></div></div>
+<div class="camera">
+<div id="reader"></div>
+<div style="position:absolute;left:8%;right:8%;top:10%;bottom:10%;border:2px solid rgba(255,255,255,.85);border-radius:18px;pointer-events:none;z-index:5"></div>
+<div id="overlay" class="overlay hidden">
+<div id="oi" class="icon">✓</div>
+<h2 id="ot">CHECKED IN</h2>
+<strong id="on"></strong>
+<small id="om"></small>
+</div>
+</div>
+<div id="status" class="status">Starting camera...</div>
+<div style="text-align:center;font-size:9px;color:#8d99a8;margin:-5px 0 10px">Scanner V2 • Hold the full QR inside the frame</div>
+<div class="actions">
+<button class="secondary" onclick="switchCamera()">Switch Camera</button>
+<button class="secondary danger" onclick="stopScanner()">Stop</button>
+</div>
+</section>
+
+</div></div></div></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwtFYtG3YfYyj_Km9sc5v1w4P53bc-g9EKxXCb89ZOn0A5Bl6OlrQemR8ABx_eSG4ii/exec";
+let staffPin="", qr=null, cameras=[], cameraIndex=0, locked=false, lastText="", lastAt=0, sessionCount=0, timer=null;
+
+async function begin(){
+  const p=document.getElementById("pin").value.trim();
+  if(!p){err("Enter Staff PIN.");return}
+  staffPin=p; err("");
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("scanner").classList.remove("hidden");
+  await startCamera();
+}
+
+async function startCamera(){
+  try{
+    setStatus("Requesting camera...");
+    cameras=await Html5Qrcode.getCameras();
+    if(!cameras.length) throw new Error("No camera found.");
+    const rear=cameras.findIndex(c=>/back|rear|environment|world/i.test(c.label||""));
+    cameraIndex=rear>=0?rear:cameras.length-1;
+    await openCamera(cameras[cameraIndex].id);
+  }catch(e){
+    setStatus("Camera error");
+    showOverlay("error","CAMERA ERROR","",friendlyCameraError(e));
+  }
+}
+
+async function openCamera(id){
+  if(qr){try{if(qr.isScanning)await qr.stop();qr.clear()}catch(e){}}
+  qr=new Html5Qrcode("reader", {
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
+  });
+  await qr.start(
+    { deviceId: { exact: id } },
+    {
+      fps: 15,
+      qrbox: function(viewfinderWidth, viewfinderHeight) {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const size = Math.floor(minEdge * 0.82);
+        return { width: size, height: size };
+      }
+    },
+    (decodedText, decodedResult) => {
+      console.log("QR DETECTED:", decodedText, decodedResult);
+      setStatus("QR detected — checking attendee...");
+      handleScan(decodedText);
+    },
+    ()=>{}
+  );
+  locked=false;
+  setStatus("Ready for next attendee");
+}
+
+async function switchCamera(){
+  if(!cameras.length)return;
+  locked=true;
+  cameraIndex=(cameraIndex+1)%cameras.length;
+  try{await openCamera(cameras[cameraIndex].id)}catch(e){showOverlay("error","CAMERA ERROR","",friendlyCameraError(e))}
+}
+
+async function stopScanner(){
+  locked=true;
+  try{if(qr&&qr.isScanning)await qr.stop()}catch(e){}
+  location.reload();
+}
+
+function handleScan(text){
+  text=String(text||"").trim();
+  if(!text||locked)return;
+  const now=Date.now();
+  if(text===lastText && now-lastAt<2500)return;
+  lastText=text;lastAt=now;locked=true;
+  setStatus("Checking attendee...");
+  sendCheckIn(text);
+}
+
+function sendCheckIn(qrPayload){
+  const callbackName="ontimeCallback_"+Date.now()+"_"+Math.floor(Math.random()*100000);
+  const script=document.createElement("script");
+  let finished=false;
+
+  function cleanup(){
+    if(finished)return;
+    finished=true;
+    clearTimeout(timeout);
+    try{delete window[callbackName]}catch(e){window[callbackName]=undefined}
+    if(script.parentNode)script.parentNode.removeChild(script);
+  }
+
+  window[callbackName]=function(data){
+    cleanup();
+
+    if(data.code==="UNAUTHORIZED" || data.authorized===false){
+      staffPin="";
+      showOverlay("error","ACCESS DENIED","",data.message||"Invalid Staff PIN.");
+      setTimeout(()=>location.reload(),1600);
+      return;
+    }
+
+    const r=data.registration||{};
+    const name=r.englishName||r.arabicName||"";
+    const meta=[r.specialty||"",data.checkInTime||r.checkInTime||""].filter(Boolean).join(" • ");
+
+    if(data.success && data.code==="CHECKED_IN"){
+      sessionCount++;
+      document.getElementById("count").textContent=sessionCount;
+      showOverlay("success","CHECKED IN",name,meta);
+      return;
+    }
+
+    if(data.success && data.code==="ALREADY_CHECKED_IN"){
+      showOverlay("warning","ALREADY CHECKED IN",name,meta);
+      return;
+    }
+
+    showOverlay("error","INVALID PASS",name,data.message||"Pass could not be accepted.");
+  };
+
+  const timeout=setTimeout(function(){
+    cleanup();
+    showOverlay("error","CONNECTION ERROR","","OnTime server did not respond.");
+  },12000);
+
+  const params=new URLSearchParams({
+    api:"checkin",
+    qrPayload:String(qrPayload||"").trim(),
+    staffPin:staffPin,
+    callback:callbackName,
+    _:String(Date.now())
+  });
+
+  script.src=API_URL+"?"+params.toString();
+  script.async=true;
+  script.onerror=function(){
+    cleanup();
+    showOverlay("error","CONNECTION ERROR","","Could not reach OnTime server.");
+  };
+  document.head.appendChild(script);
+}
+
+function showOverlay(type,title,name,meta){
+  const o=document.getElementById("overlay");
+  o.className="overlay "+type;
+  document.getElementById("oi").textContent=type==="success"?"✓":type==="warning"?"!":"×";
+  document.getElementById("ot").textContent=title;
+  document.getElementById("on").textContent=name||"";
+  document.getElementById("om").textContent=meta||"";
+  if(navigator.vibrate){try{navigator.vibrate(type==="success"?70:[70,50,70])}catch(e){}}
+  if(timer)clearTimeout(timer);
+  timer=setTimeout(()=>{
+    o.classList.add("hidden");
+    locked=false;
+    setStatus("Ready for next attendee");
+  },type==="success"?1050:1450);
+}
+
+function setStatus(t){document.getElementById("status").textContent=t}
+function err(t){document.getElementById("error").textContent=t}
+function friendlyCameraError(e){
+  const s=String((e&&e.message)||e||"").toLowerCase();
+  if(s.includes("permission")||s.includes("notallowed"))return "Allow camera access for this scanner site, then reload.";
+  if(s.includes("notfound"))return "No usable camera was found.";
+  if(s.includes("notreadable"))return "Camera is busy in another app.";
+  return (e&&e.message)||"Camera could not start.";
+}
+</script>
+</body>
+</html>
