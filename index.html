@@ -65,7 +65,7 @@ input{width:100%;height:52px;border:1px solid #dce4ed;border-radius:11px;padding
 </div></div></div></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwtFYtG3YfYyj_Km9sc5v1w4P53bc-g9EKxXCb89ZOn0A5Bl6OlrQemR8ABx_eSG4ii/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbw6R9j3cDNLTXhUHXki0GnCYueXKyaLM3pGQTJdaD2QKTBAbsiOV9XvNcE76ZIcA3MM/exec";
 let staffPin="", qr=null, cameras=[], cameraIndex=0, locked=false, lastText="", lastAt=0, sessionCount=0, timer=null;
 
 async function begin(){
@@ -140,21 +140,19 @@ function handleScan(text){
   sendCheckIn(text);
 }
 
-function sendCheckIn(qrPayload){
-  const callbackName="ontimeCallback_"+Date.now()+"_"+Math.floor(Math.random()*100000);
-  const script=document.createElement("script");
-  let finished=false;
+async function sendCheckIn(qrPayload){
+  try{
+    // text/plain avoids a browser CORS preflight. Apps Script still receives JSON text.
+    const response=await fetch(API_URL,{
+      method:"POST",
+      redirect:"follow",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"checkin",qrPayload:qrPayload,staffPin:staffPin})
+    });
 
-  function cleanup(){
-    if(finished)return;
-    finished=true;
-    clearTimeout(timeout);
-    try{delete window[callbackName]}catch(e){window[callbackName]=undefined}
-    if(script.parentNode)script.parentNode.removeChild(script);
-  }
-
-  window[callbackName]=function(data){
-    cleanup();
+    const raw=await response.text();
+    let data;
+    try{data=JSON.parse(raw)}catch(e){throw new Error("Backend returned an unexpected response.");}
 
     if(data.code==="UNAUTHORIZED" || data.authorized===false){
       staffPin="";
@@ -180,28 +178,10 @@ function sendCheckIn(qrPayload){
     }
 
     showOverlay("error","INVALID PASS",name,data.message||"Pass could not be accepted.");
-  };
-
-  const timeout=setTimeout(function(){
-    cleanup();
-    showOverlay("error","CONNECTION ERROR","","OnTime server did not respond.");
-  },12000);
-
-  const params=new URLSearchParams({
-    api:"checkin",
-    qrPayload:String(qrPayload||"").trim(),
-    staffPin:staffPin,
-    callback:callbackName,
-    _:String(Date.now())
-  });
-
-  script.src=API_URL+"?"+params.toString();
-  script.async=true;
-  script.onerror=function(){
-    cleanup();
-    showOverlay("error","CONNECTION ERROR","","Could not reach OnTime server.");
-  };
-  document.head.appendChild(script);
+  }catch(e){
+    console.error(e);
+    showOverlay("error","CONNECTION ERROR","",e.message||"Could not reach OnTime server.");
+  }
 }
 
 function showOverlay(type,title,name,meta){
