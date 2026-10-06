@@ -3,22 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#07182f">
+<meta name="theme-color" content="#1f3349">
 <title>OnTime Live Check-in</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f7fb;color:#07182f}
 .wrap{min-height:100vh;padding:18px;display:flex;justify-content:center}.app{width:100%;max-width:460px}
-.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin:4px 0 16px}.logo{width:43px;height:43px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#2774ed,#16b8aa);color:white;font-weight:900}.brand b{display:block;font-size:18px}.brand small{font-size:7px;letter-spacing:1.5px;color:#8b98a9;font-weight:900}
+.brand{display:flex;align-items:center;justify-content:center;margin:4px 0 16px}.brand-logo{display:block;width:150px;max-width:48vw;height:72px;object-fit:contain}
 .card{background:white;border:1px solid #e2e8ef;border-radius:22px;overflow:hidden;box-shadow:0 22px 55px rgba(7,24,47,.12)}
-.head{background:#07182f;color:white;text-align:center;padding:20px}.head small{color:#6daaff;font-size:8px;font-weight:900;letter-spacing:2px}.head h1{font-size:23px;margin:6px 0 0}
+.head{background:#1f3349;color:white;text-align:center;padding:20px}.head small{color:#f8bb2d;font-size:8px;font-weight:900;letter-spacing:2px}.head h1{font-size:23px;margin:6px 0 0}
 .body{padding:22px}.hidden{display:none!important}
 label{display:block;font-size:9px;font-weight:900;letter-spacing:1px;color:#8794a5;margin:0 0 8px}
 input{width:100%;height:52px;border:1px solid #dce4ed;border-radius:11px;padding:0 14px;font-size:18px;outline:none;text-align:center;letter-spacing:4px}
-.primary{width:100%;height:54px;border:0;border-radius:11px;background:#07182f;color:white;font-weight:900;margin-top:13px;cursor:pointer}
+.primary{width:100%;height:54px;border:0;border-radius:11px;background:#1f3349;color:white;font-weight:900;margin-top:13px;cursor:pointer}
 .note{font-size:10px;line-height:1.55;color:#8d99a8;text-align:center;margin:12px 4px 0}
 .topbar{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:12px}.pill{padding:8px 10px;border-radius:9px;background:#eaf8f3;color:#168665;font-size:9px;font-weight:900}.count{font-size:10px;color:#8794a5}.count b{color:#07182f;font-size:16px}
-.camera{position:relative;overflow:hidden;border-radius:16px;background:#07182f;min-height:390px}
+.camera{position:relative;overflow:hidden;border-radius:16px;background:#1f3349;min-height:390px}
 #reader{width:100%;min-height:390px}#reader video{width:100%!important;min-height:390px;object-fit:cover;border-radius:16px}
 .overlay{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:25px;color:white;background:rgba(7,24,47,.93)}
 .overlay.success{background:rgba(13,130,94,.94)}.overlay.warning{background:rgba(164,111,9,.94)}.overlay.error{background:rgba(169,57,57,.94)}
@@ -29,7 +29,7 @@ input{width:100%;height:52px;border:1px solid #dce4ed;border-radius:11px;padding
 </head>
 <body>
 <div class="wrap"><div class="app">
-<div class="brand"><div class="logo">O</div><div><b>OnTime</b><small>EVENTS & CONFERENCES</small></div></div>
+<div class="brand"><img class="brand-logo" src="logo.png" alt="OnTime Event Organization"></div>
 <div class="card">
 <div class="head"><small>ONTIME TEAM</small><h1>Live Staff Check-in</h1></div>
 <div class="body">
@@ -65,7 +65,7 @@ input{width:100%;height:52px;border:1px solid #dce4ed;border-radius:11px;padding
 </div></div></div></div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbw6R9j3cDNLTXhUHXki0GnCYueXKyaLM3pGQTJdaD2QKTBAbsiOV9XvNcE76ZIcA3MM/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzQnNMbl3jHZmgNMy-kbLuOJ_hVrIkyOrMUnT8m17I2Tc020BRWGkEoQt4tTBj4K22N/exec";
 let staffPin="", qr=null, cameras=[], cameraIndex=0, locked=false, lastText="", lastAt=0, sessionCount=0, timer=null;
 
 async function begin(){
